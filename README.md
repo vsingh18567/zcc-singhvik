@@ -10,6 +10,11 @@ pip install pipenv
 pipenv shell
 pipenv install
 ```
+3. Create a `.env` file in the root of the project and set the environment variables
+```bash
+EMAIL=email@email.com
+TOKEN=hashedtoken
+```
 
 ## Usage
 1. Start up the Flask app
