@@ -1,8 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% for ticket in ticket_data %}
-    <p>{{ticket.id}}</p>
-{% endfor %}
+<table class="table table-striped center-div">
+    <thead style="border:black">
+        <tr>
+            <th>Id</th>
+            <th>Subject</th>
+            <th>Time Created</th>
+            <th>Priority</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for ticket in ticket_data %}
+        <tr>
+            <td> <a href = "{{ url_for('ticket_id', id=ticket.id) }}"> {{ticket.id}}</a></td>
+            <td>{{ticket.subject}}</td>
+            <td>{{ticket.created_at}}</td>
+            <td>{{ticket.priority}}</td>
+            <td>{{ticket.status}}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
 
+{% if next_link %}
+<p>{{next_link}}</p>
+{% endif %}
 {% endblock %}
