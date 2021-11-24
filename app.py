@@ -88,13 +88,13 @@ def ticket_id(id):
     else:
         try:
             text = response.json()
+            if text.get("error") == "RecordNotFound":
+                return redirect(
+                    url_for("tickets", error="Could not find ticket with that ID")
+                )
+            return render_template("error.html")
         except:
             return render_template("error.html")
-        if text.get("error") == "RecordNotFound":
-            return redirect(
-                url_for("tickets", error="Could not find ticket with that ID")
-            )
-        return render_template("error.html")
 
 
 def create_app():
