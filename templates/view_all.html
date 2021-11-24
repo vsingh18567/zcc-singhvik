@@ -1,30 +1,45 @@
 {% extends "base.html" %}
 
 {% block content %}
+<form method="POST">
+    <div class="form-group row">
+        <label class="col-form-label col-sm-2"><strong>Search by ID </strong></label>
+        <input type="number" name="ticket_id" id="ticket_id" placeholder="1" class="col-sm-3" required>
+        <input class="btn btn-dark col-sm-1" value="Search" type="submit">
+    </div>
+
+</form>
 <table class="table table-striped center-div">
     <thead style="border:black">
         <tr>
-            <th>Id</th>
+            <th>ID</th>
             <th>Subject</th>
-            <th>Time Created</th>
+            <th>Date Created</th>
             <th>Priority</th>
             <th>Status</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
     {% for ticket in ticket_data %}
         <tr>
-            <td> <a href = "{{ url_for('ticket_id', id=ticket.id) }}"> {{ticket.id}}</a></td>
+            <td> {{ticket.id}} </td>
             <td>{{ticket.subject}}</td>
             <td>{{ticket.created_at}}</td>
             <td>{{ticket.priority}}</td>
             <td>{{ticket.status}}</td>
+            <td><a href = "{{ url_for('ticket_id', id=ticket.id) }}" class="btn btn-primary"> View </a></td>
         </tr>
     {% endfor %}
     </tbody>
 </table>
-
-{% if next_link %}
-<p>{{next_link}}</p>
-{% endif %}
+<p style="margin-top:1%"></p>
+<div class="center-div col-md-2">
+    {% if prev_link %}
+    <a href = "{{url_for ('tickets', request_url=prev_link, page_num=page-1) }}" class="btn btn-secondary">Prev </a>
+    {% endif %}
+    {% if next_link %}
+    <a href = "{{url_for ('tickets', request_url=next_link, page_num=page+1) }}" class="btn btn-dark"> Next </a>
+    {% endif %}
+</div>
 {% endblock %}

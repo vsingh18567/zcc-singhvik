@@ -1,35 +1,105 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, url_for, redirect
 import requests
 from dotenv import load_dotenv
 import json
 import os
+from dateutil import parser
 
 # consts
 load_dotenv()
 app = Flask(__name__)
 main_url = "https://zccsinghvik.zendesk.com/api/v2/"
-API_EMAIL = os.environ.get('EMAIL')
-API_TOKEN = os.environ.get('TOKEN')
+API_EMAIL = os.environ.get("EMAIL")
+API_TOKEN = os.environ.get("TOKEN")
 
 
-@app.route('/tickets')
-def hello_world(url=None):
-    if not url:
-        url = f"{main_url}tickets.json?page[size]=25"
-    data = requests.get(url, auth=(f"{API_EMAIL}/token", API_TOKEN)).json()
-    has_more = data['meta']['has_more']
-    next_link = None
-    prev_link = data['links']['prev']
-    if has_more:
-        next_link = data['links']['next']
+@app.route("/tickets", methods=["GET", "POST"])
+def tickets():
+    """
+    route for viewing all tickets
+    """
+    if request.method == "GET":
+        request_url = request.args.get("request_url", default=f"{main_url}tickets.json?page[size]=25", type=str)
+        page = request.args.get("page_num", default=1, type=int)
+        error = request.args.get("error", default=None, type=str)
 
-    return render_template('view_all.html', ticket_data=data["tickets"], next_link=next_link, prev_link=prev_link)
+        response = requests.get(request_url, auth=(f"{API_EMAIL}/token", API_TOKEN))
+        if response.status_code > 299:
+            return render_template("error.html")
+        data = response.json()
+        if len(data["tickets"]) == 0:
+            error = "Oops something went wrong"
+            request_url = f"{main_url}tickets.json?page[size]=25"
+            page = 1
+            response = requests.get(request_url, auth=(f"{API_EMAIL}/token", API_TOKEN))
+            if response.status_code > 299:
+                return render_template("error.html")
+            data = response.json()
+
+        next_link = None
+        prev_link = data["links"]["prev"]
+
+        if data["meta"]["has_more"]:
+            next_link = data["links"]["next"]
+
+        if page == 1:
+            prev_link = None
+        for ticket in data["tickets"]:
+            ticket_time = parser.parse(ticket["created_at"])
+            ticket["created_at"] = f"{ticket_time.year}/{ticket_time.month}/{ticket_time.day}"
+
+        return render_template(
+            "view_all.html",
+            ticket_data=data["tickets"],
+            next_link=next_link,
+            prev_link=prev_link,
+            error=error,
+            page=page
+        )
+    else:
+        id = request.form["ticket_id"]
+        return redirect(url_for('ticket_id', id=id))
 
 
-@app.route('/ticket/<id>')
+@app.route("/ticket/<id>")
 def ticket_id(id):
-    return render_template("view_one.html")
-
+    """
+    :param id: ticket id
+    route for viewing details of a specific ticket
+    """
+    response = requests.get(f"{main_url}tickets/{id}.json", auth=(f"{API_EMAIL}/token", API_TOKEN))
+    if response.status_code == 200:
+        ticket = response.json()["ticket"]
+        '''
+        the relevant data:
+            id, subject, description, priority, status, time created, requester_id,
+            submitter_id, organization_id
+        '''
+        ticket_time = parser.parse(ticket["created_at"])
+        ticket["created_at"] = f"{ticket_time.year}/{ticket_time.month}/{ticket_time.day}"
+        org_response = requests.get(f"{main_url}organizations/{ticket['organization_id']}.json",
+                                    auth=(f"{API_EMAIL}/token", API_TOKEN))
+        org = None
+        if org_response.status_code == 200:
+            print(org_response.json())
+            org = org_response.json()["organization"]["name"]
+        req_response = requests.get(f"{main_url}users/{ticket['requester_id']}.json",
+                                    auth=(f"{API_EMAIL}/token", API_TOKEN))
+        req = None
+        if req_response.status_code == 200:
+            print(req_response.json())
+            req = req_response.json()["user"]["name"]
+        sub_response = requests.get(f"{main_url}users/{ticket['submitter_id']}.json",
+                                    auth=(f"{API_EMAIL}/token", API_TOKEN))
+        sub = None
+        if sub_response.status_code == 200:
+            sub = sub_response.json()["user"]["name"]
+        return render_template("view_one.html", ticket=ticket, org=org, req=req, sub=sub)
+    else:
+        text = response.json()
+        if text.get("error") == "RecordNotFound":
+            return redirect(url_for('tickets', error="Could not find ticket with that ID"))
+        return render_template("error.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="localhost", port=8000)

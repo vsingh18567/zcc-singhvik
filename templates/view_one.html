@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<p></p>
+<a href = "{{url_for ('tickets')}}" class="btn btn-dark"> View all tickets </a><br><br>
+<h3>Subject: {{ticket.subject}}</h3>
+<h6><b> Priority:</b> {{ticket.priority}}</h6>
+<h6><b> Status:</b> {{ticket.status}}</h6>
+<h6><b> Date Created:</b> {{ticket.created_at}}</h6>
+<h6><b> Organization:</b> {{org}}</h6>
+<h6><b> Requester:</b> {{req}}</h6>
+<h6><b> Submitter:</b> {{sub}}</h6>
+<p><i>{{ticket.description}}</i></p>
 {% endblock %}

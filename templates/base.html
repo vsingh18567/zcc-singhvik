@@ -11,16 +11,30 @@
             top:10%;
             margin: 0 auto;
         }
+
+        body {
+            background-color: #e8f4f8
+        }
+
+        tr:hover {
+            color: white !important;
+            background-color: black;
+        }
+
     </style>
 </head>
 <body>
+    {% if error %}
+    <div class="alert alert-danger">
+        {{ error }}
+    </div>
+    {% endif %}
     <div class=center-div">
         <div class="col-md-4; center-div" style="margin-top: 5%; width: 60%">
-            <h1>Ticket Viewer</h1>
+            <h1>Ticket Viewer</h1><hr>
             {% block content %}
             {% endblock %}
         </div>
-
     </div>
 
 </body>
