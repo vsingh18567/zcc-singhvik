@@ -8,10 +8,16 @@ flask = "*"
 requests = "*"
 python-dotenv = "*"
 python-dateutil = "*"
+blinker = "*"
+flask-unittest = "*"
 
 [dev-packages]
 isort = "*"
+flask-testing = "*"
 
 [requires]
 python_version = ">3.8"
 
+[scripts]
+app = "python3 app.py"
+test = "python3 tests.py"

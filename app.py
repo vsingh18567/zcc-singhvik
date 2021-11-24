@@ -1,49 +1,37 @@
-import os
+import sys
 
-import requests
-from dateutil import parser
-from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, request, url_for
 
+from utils import *
+
 # consts
-load_dotenv()
 app = Flask(__name__)
-main_url = "https://zccsinghvik.zendesk.com/api/v2/"
-API_EMAIL = os.environ.get("EMAIL")
-API_TOKEN = os.environ.get("TOKEN")
+MAIN_URL = f"https://{API_DOMAIN}.zendesk.com/api/v2/"
+DEFAULT_URL = f"{MAIN_URL}tickets.json?page[size]=25"
 
 
-def prettify_ticket(ticket):
-    """
-    makes ticket info pretty
-    """
-    ticket_time = parser.parse(ticket["created_at"])
-    ticket["created_at"] = f"{ticket_time.year}/{ticket_time.month}/{ticket_time.day}"
-
-    ticket["status"] = str(ticket["status"]).capitalize()
-    ticket["priority"] = str(ticket["priority"]).capitalize()
-    return ticket
-
-
-@app.route("/tickets", methods=["GET", "POST"])
+@app.route("/", methods=["GET", "POST"])
 def tickets():
     """
     route for viewing all tickets
     """
     if request.method == "GET":
-        request_url = request.args.get(
-            "request_url", default=f"{main_url}tickets.json?page[size]=25", type=str
-        )
+        request_url = request.args.get("request_url", default=DEFAULT_URL, type=str)
         page = request.args.get("page_num", default=1, type=int)
         error = request.args.get("error", default=None, type=str)
-        response = requests.get(request_url, auth=(f"{API_EMAIL}/token", API_TOKEN))
+
+        if MAIN_URL not in request_url:
+            request_url = DEFAULT_URL
+            page = 1
+
+        response = make_request(request_url)
 
         if response.status_code > 299:
-            if request_url != f"{main_url}tickets.json?page[size]=25":
+            if request_url != DEFAULT_URL:
                 # try hitting the default page
                 return redirect(url_for("tickets", error="Oops something went wrong"))
             # otherwise its probably some server error
-            return render_template("error.html")
+            return render_template("error.html"), 404
 
         data = response.json()
 
@@ -55,10 +43,7 @@ def tickets():
 
         if page == 1:
             prev_link = None
-
-        for ticket in data["tickets"]:
-            # make dates pretty
-            ticket = prettify_ticket(ticket)
+        data["tickets"] = list(map(lambda t: prettify_ticket(t), data["tickets"]))
 
         return render_template(
             "view_all.html",
@@ -79,9 +64,8 @@ def ticket_id(id):
     :param id: ticket id
     route for viewing details of a specific ticket
     """
-    response = requests.get(
-        f"{main_url}tickets/{id}.json", auth=(f"{API_EMAIL}/token", API_TOKEN)
-    )
+    response = make_request(f"{MAIN_URL}tickets/{id}.json")
+
     if response.status_code == 200:
         ticket = response.json()["ticket"]
         """
@@ -89,37 +73,23 @@ def ticket_id(id):
             id, subject, description, priority, status, time created, requester_id,
             submitter_id, organization_id
         """
-        # prettify
+
         ticket = prettify_ticket(ticket)
 
-        org_response = requests.get(
-            f"{main_url}organizations/{ticket['organization_id']}.json",
-            auth=(f"{API_EMAIL}/token", API_TOKEN),
+        org = verify_response(
+            f"{MAIN_URL}organizations/{ticket['organization_id']}.json", "organization"
         )
-        org = None
-        if org_response.status_code == 200:
-            print(org_response.json())
-            org = org_response.json()["organization"]["name"]
-        req_response = requests.get(
-            f"{main_url}users/{ticket['requester_id']}.json",
-            auth=(f"{API_EMAIL}/token", API_TOKEN),
-        )
-        req = None
-        if req_response.status_code == 200:
-            print(req_response.json())
-            req = req_response.json()["user"]["name"]
-        sub_response = requests.get(
-            f"{main_url}users/{ticket['submitter_id']}.json",
-            auth=(f"{API_EMAIL}/token", API_TOKEN),
-        )
-        sub = None
-        if sub_response.status_code == 200:
-            sub = sub_response.json()["user"]["name"]
+        req = verify_response(f"{MAIN_URL}users/{ticket['requester_id']}.json", "user")
+        sub = verify_response(f"{MAIN_URL}users/{ticket['submitter_id']}.json", "user")
         return render_template(
             "view_one.html", ticket=ticket, org=org, req=req, sub=sub
         )
+
     else:
-        text = response.json()
+        try:
+            text = response.json()
+        except:
+            return render_template("error.html")
         if text.get("error") == "RecordNotFound":
             return redirect(
                 url_for("tickets", error="Could not find ticket with that ID")
@@ -127,5 +97,16 @@ def ticket_id(id):
         return render_template("error.html")
 
 
+def create_app():
+    return app
+
+
 if __name__ == "__main__":
-    app.run(debug=True, host="localhost", port=8000)
+    if len(sys.argv) <= 1:
+        port = 8000
+    else:
+        try:
+            port = int(sys.argv[1])
+        except ValueError:
+            port = 8000
+    app.run(debug=True, host="localhost", port=port)
