@@ -11,6 +11,7 @@ The `/templates` folder stores the HTML files that are accessed by the backend.
 
 ## Installation
 Assuming Python (>3.8) and `pip` are installed.
+
 0. Clone this repository
 ```bash
 git clone https://github.com/vsingh18567/zcc-singhvik.git
@@ -22,7 +23,7 @@ pip install pipenv --upgrade
 2. Start a `pipenv` envrionment. Ensure you are in the folder with `Pipfile`.
 ```bash
 pipenv shell
-pipenv install
+pipenv install --dev
 ```
 3. Create a `.env` file in the root of the project and set the environment variables based on your Zendesk agent
 credentials.
